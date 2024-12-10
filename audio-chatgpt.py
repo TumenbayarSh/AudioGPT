@@ -135,76 +135,76 @@ class ImageCaptioning:
         captions = self.processor.decode(out[0], skip_special_tokens=True)
         return captions
 
-class T2A:
-    def __init__(self, device):
-        print("Initializing Make-An-Audio to %s" % device)
-        self.device = device
-        self.sampler = self._initialize_model('text_to_audio/Make_An_Audio/configs/text_to_audio/txt2audio_args.yaml',
-                                              'text_to_audio/Make_An_Audio/useful_ckpts/ta40multi_epoch=000085.ckpt',
-                                              device=device)
-        self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
+# class T2A:
+#     def __init__(self, device):
+#         print("Initializing Make-An-Audio to %s" % device)
+#         self.device = device
+#         self.sampler = self._initialize_model('text_to_audio/Make_An_Audio/configs/text_to_audio/txt2audio_args.yaml',
+#                                               'text_to_audio/Make_An_Audio/useful_ckpts/ta40multi_epoch=000085.ckpt',
+#                                               device=device)
+#         self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
 
-    def _initialize_model(self, config, ckpt, device):
-        config = OmegaConf.load(config)
-        model = instantiate_from_config(config.model)
-        model.load_state_dict(torch.load(ckpt, map_location='cpu')["state_dict"], strict=False)
-        model = model.to(device)
-        sampler = DDIMSampler(model)
-        return sampler
+#     def _initialize_model(self, config, ckpt, device):
+#         config = OmegaConf.load(config)
+#         model = instantiate_from_config(config.model)
+#         model.load_state_dict(torch.load(ckpt, map_location='cpu')["state_dict"], strict=False)
+#         model = model.to(device)
+#         sampler = DDIMSampler(model)
+#         return sampler
 
-    def txt2audio(self, text, seed=55, scale=1.5, ddim_steps=100, n_samples=3, W=624, H=80):
-        SAMPLE_RATE = 16000
-        prng = np.random.RandomState(seed)
-        start_code = prng.randn(n_samples, self.sampler.model.first_stage_model.embed_dim, H // 8, W // 8)
-        start_code = torch.from_numpy(start_code).to(device=self.device, dtype=torch.float32)
-        uc = self.sampler.model.get_learned_conditioning(n_samples * [""])
-        c = self.sampler.model.get_learned_conditioning(n_samples * [text])
-        shape = [self.sampler.model.first_stage_model.embed_dim, H//8, W//8]
-        samples_ddim, _ = self.sampler.sample(
-            S=ddim_steps,
-            conditioning=c,
-            batch_size=n_samples,
-            shape=shape,
-            verbose=False,
-            unconditional_guidance_scale=scale,
-            unconditional_conditioning=uc,
-            x_T=start_code
-        )
+#     def txt2audio(self, text, seed=55, scale=1.5, ddim_steps=100, n_samples=3, W=624, H=80):
+#         SAMPLE_RATE = 16000
+#         prng = np.random.RandomState(seed)
+#         start_code = prng.randn(n_samples, self.sampler.model.first_stage_model.embed_dim, H // 8, W // 8)
+#         start_code = torch.from_numpy(start_code).to(device=self.device, dtype=torch.float32)
+#         uc = self.sampler.model.get_learned_conditioning(n_samples * [""])
+#         c = self.sampler.model.get_learned_conditioning(n_samples * [text])
+#         shape = [self.sampler.model.first_stage_model.embed_dim, H//8, W//8]
+#         samples_ddim, _ = self.sampler.sample(
+#             S=ddim_steps,
+#             conditioning=c,
+#             batch_size=n_samples,
+#             shape=shape,
+#             verbose=False,
+#             unconditional_guidance_scale=scale,
+#             unconditional_conditioning=uc,
+#             x_T=start_code
+#         )
 
-        x_samples_ddim = self.sampler.model.decode_first_stage(samples_ddim)
-        x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0)
+#         x_samples_ddim = self.sampler.model.decode_first_stage(samples_ddim)
+#         x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0)
 
-        wav_list = []
-        for idx,spec in enumerate(x_samples_ddim):
-            wav = self.vocoder.vocode(spec)
-            wav_list.append((SAMPLE_RATE,wav))
-        best_wav = self.select_best_audio(text, wav_list)
-        return best_wav
+#         wav_list = []
+#         for idx,spec in enumerate(x_samples_ddim):
+#             wav = self.vocoder.vocode(spec)
+#             wav_list.append((SAMPLE_RATE,wav))
+#         best_wav = self.select_best_audio(text, wav_list)
+#         return best_wav
 
-    def select_best_audio(self, prompt, wav_list):
-        from wav_evaluation.models.CLAPWrapper import CLAPWrapper
-        # Run CLAP on CPU
-        clap_model = CLAPWrapper('text_to_audio/Make_An_Audio/useful_ckpts/CLAP/CLAP_weights_2022.pth',
-                                 'text_to_audio/Make_An_Audio/useful_ckpts/CLAP/config.yml',
-                                 use_cuda=False)
-        text_embeddings = clap_model.get_text_embeddings([prompt])
-        score_list = []
-        for data in wav_list:
-            sr, wav = data
-            audio_embeddings = clap_model.get_audio_embeddings([(torch.FloatTensor(wav), sr)], resample=True)
-            score = clap_model.compute_similarity(audio_embeddings, text_embeddings, use_logit_scale=False).squeeze().cpu().numpy()
-            score_list.append(score)
-        max_index = np.array(score_list).argmax()
-        print(score_list, max_index)
-        return wav_list[max_index]
+#     def select_best_audio(self, prompt, wav_list):
+#         from wav_evaluation.models.CLAPWrapper import CLAPWrapper
+#         # Run CLAP on CPU
+#         clap_model = CLAPWrapper('text_to_audio/Make_An_Audio/useful_ckpts/CLAP/CLAP_weights_2022.pth',
+#                                  'text_to_audio/Make_An_Audio/useful_ckpts/CLAP/config.yml',
+#                                  use_cuda=False)
+#         text_embeddings = clap_model.get_text_embeddings([prompt])
+#         score_list = []
+#         for data in wav_list:
+#             sr, wav = data
+#             audio_embeddings = clap_model.get_audio_embeddings([(torch.FloatTensor(wav), sr)], resample=True)
+#             score = clap_model.compute_similarity(audio_embeddings, text_embeddings, use_logit_scale=False).squeeze().cpu().numpy()
+#             score_list.append(score)
+#         max_index = np.array(score_list).argmax()
+#         print(score_list, max_index)
+#         return wav_list[max_index]
 
-    def inference(self, text):
-        SAMPLE_RATE = 16000
-        result = self.txt2audio(text)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        soundfile.write(audio_filename, result[1], samplerate=SAMPLE_RATE)
-        print(f"Processed T2A.run, text: {text}, audio_filename: {audio_filename}")
-        return audio_filename
+#     def inference(self, text):
+#         SAMPLE_RATE = 16000
+#         result = self.txt2audio(text)
+#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+#         soundfile.write(audio_filename, result[1], samplerate=SAMPLE_RATE)
+#         print(f"Processed T2A.run, text: {text}, audio_filename: {audio_filename}")
+#         return audio_filename
 
 class I2A:
     def __init__(self, device):
@@ -831,7 +831,7 @@ class ConversationBot:
         # All devices to CPU
         self.t2i = T2I(device="cpu")
         self.i2t = ImageCaptioning(device="cpu")
-        self.t2a = T2A(device="cpu")
+        # self.t2a = T2A(device="cpu")
         self.tts = TTS(device="cpu")
         self.t2s = T2S(device="cpu")
         self.i2a = I2A(device="cpu")
