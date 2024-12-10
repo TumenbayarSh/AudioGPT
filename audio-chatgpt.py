@@ -324,17 +324,17 @@ class ImageCaptioning:
 #         print(f"Processed T2S.run, audio_filename: {audio_filename}")
 #         return audio_filename
 
-class A2T:
-    def __init__(self, device):
-        from audio_to_text.inference_waveform import AudioCapModel
-        print("Initializing Audio-To-Text Model to %s" % device)
-        self.device = device
-        self.model = AudioCapModel("audio_to_text/audiocaps_cntrstv_cnn14rnn_trm")
+# class A2T:
+#     def __init__(self, device):
+#         from audio_to_text.inference_waveform import AudioCapModel
+#         print("Initializing Audio-To-Text Model to %s" % device)
+#         self.device = device
+#         self.model = AudioCapModel("audio_to_text/audiocaps_cntrstv_cnn14rnn_trm")
 
-    def inference(self, audio_path):
-        audio = whisper.load_audio(audio_path)
-        caption_text = self.model(audio)
-        return caption_text[0]
+#     def inference(self, audio_path):
+#         audio = whisper.load_audio(audio_path)
+#         caption_text = self.model(audio)
+#         return caption_text[0]
 
 class ASR:
     def __init__(self, device):
@@ -835,7 +835,7 @@ class ConversationBot:
         # self.tts = TTS(device="cpu")
         # self.t2s = T2S(device="cpu")
         # self.i2a = I2A(device="cpu")
-        self.a2t = A2T(device="cpu")
+        # self.a2t = A2T(device="cpu")
         self.asr = ASR(device="cpu")
         self.SE_SS_SC = Speech_Enh_SS_SC(device="cpu")
         self.SS = Speech_SS(device="cpu")
