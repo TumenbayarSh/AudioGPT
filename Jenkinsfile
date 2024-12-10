@@ -64,7 +64,8 @@ pipeline {
             steps {
                 sh '''
                 export PATH="$MINICONDA_DIR/bin:$PATH"
-                conda run -n audiogpt pip install --upgrade diffusers huggingface_hub
+                conda run -n audiogpt pip install --upgrade pip
+                conda run -n audiogpt pip install --upgrade diffusers transformers safetensors huggingface_hub
                 '''
             }
         }
