@@ -36,6 +36,7 @@ open_clip_torch==2.0.2
 openai
 openai-whisper
 opencv-contrib-python==4.5.3.56
+portaspeech
 praat-parselmouth==0.3.3
 prettytable==3.6.0
 proglog==0.1.9
