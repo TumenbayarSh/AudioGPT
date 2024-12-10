@@ -426,40 +426,40 @@ class Speech_SS:
             audio_filename = merge_audio(audio_filename_1, audio_filename_2)
         return audio_filename
 
-class TTS_OOD:
-    def __init__(self, device):
-        from inference.tts.GenerSpeech import GenerSpeechInfer
-        if device is None:
-            device = 'cpu'
-        print("Initializing GenerSpeech to %s" % device)
-        self.device = device
-        self.exp_name = 'checkpoints/GenerSpeech'
-        self.config = 'NeuralSeq/modules/GenerSpeech/config/generspeech.yaml'
-        self.set_model_hparams()
-        self.pipe = GenerSpeechInfer(self.hp, device)
+# class TTS_OOD:
+#     def __init__(self, device):
+#         from inference.tts.GenerSpeech import GenerSpeechInfer
+#         if device is None:
+#             device = 'cpu'
+#         print("Initializing GenerSpeech to %s" % device)
+#         self.device = device
+#         self.exp_name = 'checkpoints/GenerSpeech'
+#         self.config = 'NeuralSeq/modules/GenerSpeech/config/generspeech.yaml'
+#         self.set_model_hparams()
+#         self.pipe = GenerSpeechInfer(self.hp, device)
 
-    def set_model_hparams(self):
-        set_hparams(config=self.config, exp_name=self.exp_name, print_hparams=False)
-        f0_stats_fn = f'{hp["binary_data_dir"]}/train_f0s_mean_std.npy'
-        if os.path.exists(f0_stats_fn):
-            hp['f0_mean'], hp['f0_std'] = np.load(f0_stats_fn)
-            hp['f0_mean'] = float(hp['f0_mean'])
-            hp['f0_std'] = float(hp['f0_std'])
-        hp['emotion_encoder_path'] = 'checkpoints/Emotion_encoder.pt'
-        self.hp = hp
+#     def set_model_hparams(self):
+#         set_hparams(config=self.config, exp_name=self.exp_name, print_hparams=False)
+#         f0_stats_fn = f'{hp["binary_data_dir"]}/train_f0s_mean_std.npy'
+#         if os.path.exists(f0_stats_fn):
+#             hp['f0_mean'], hp['f0_std'] = np.load(f0_stats_fn)
+#             hp['f0_mean'] = float(hp['f0_mean'])
+#             hp['f0_std'] = float(hp['f0_std'])
+#         hp['emotion_encoder_path'] = 'checkpoints/Emotion_encoder.pt'
+#         self.hp = hp
 
-    def inference(self, inputs):
-        self.set_model_hparams()
-        key = ['ref_audio', 'text']
-        val = inputs.split(",")
-        inp = {k: v for k, v in zip(key, val)}
-        wav = self.pipe.infer_once(inp)
-        wav *= 32767
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
-        print(
-            f"Processed GenerSpeech.run. Input text:{val[1]}. Input reference audio: {val[0]}. Output Audio_filename: {audio_filename}")
-        return audio_filename
+#     def inference(self, inputs):
+#         self.set_model_hparams()
+#         key = ['ref_audio', 'text']
+#         val = inputs.split(",")
+#         inp = {k: v for k, v in zip(key, val)}
+#         wav = self.pipe.infer_once(inp)
+#         wav *= 32767
+#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+#         wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
+#         print(
+#             f"Processed GenerSpeech.run. Input text:{val[1]}. Input reference audio: {val[0]}. Output Audio_filename: {audio_filename}")
+#         return audio_filename
 
 # class Inpaint:
 #     def __init__(self, device):
@@ -840,7 +840,7 @@ class ConversationBot:
         self.SE_SS_SC = Speech_Enh_SS_SC(device="cpu")
         self.SS = Speech_SS(device="cpu")
         # self.inpaint = Inpaint(device="cpu")
-        self.tts_ood = TTS_OOD(device="cpu")
+        # self.tts_ood = TTS_OOD(device="cpu")
         # self.geneface = GeneFace(device="cpu")
         self.detection = SoundDetection(device="cpu")
         # self.binaural = Binaural(device="cpu")
