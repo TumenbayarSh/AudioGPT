@@ -736,93 +736,93 @@ class SoundExtraction:
 #         print(f"Processed Binaural.run, audio_filename: {audio_filename}")
 #         return audio_filename
 
-class TargetSoundDetection:
-    def __init__(self, device):
-        from target_sound_detection.src import models as tsd_models
-        from target_sound_detection.src.models import event_labels
-        self.device = device
-        self.MEL_ARGS = {
-            'n_mels': 64,
-            'n_fft': 2048,
-            'hop_length': int(22050 * 20 / 1000),
-            'win_length': int(22050 * 40 / 1000)
-        }
-        self.EPS = np.spacing(1)
-        self.clip_model, _ = clip.load("ViT-B/32", device=self.device)
-        self.event_labels = event_labels
-        self.id_to_event =  {i : label for i, label in enumerate(self.event_labels)}
-        config = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/run_config.pth', map_location='cpu')
-        config_parameters = dict(config)
-        config_parameters['tao'] = 0.6
-        if 'thres' not in config_parameters.keys():
-            config_parameters['thres'] = 0.5
-        if 'time_resolution' not in config_parameters.keys():
-            config_parameters['time_resolution'] = 125
-        model_parameters = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/run_model_7_loss=-0.0724.pt', map_location='cpu')
-        self.model = getattr(tsd_models, config_parameters['model'])(config_parameters,
-                    inputdim=64, outputdim=2, time_resolution=config_parameters['time_resolution'], **config_parameters['model_args'])
-        self.model.load_state_dict(model_parameters)
-        self.model = self.model.to(self.device).eval()
-        self.re_embeds = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/text_emb.pth')
-        self.ref_mel = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/ref_mel.pth')
+# class TargetSoundDetection:
+#     def __init__(self, device):
+#         from target_sound_detection.src import models as tsd_models
+#         from target_sound_detection.src.models import event_labels
+#         self.device = device
+#         self.MEL_ARGS = {
+#             'n_mels': 64,
+#             'n_fft': 2048,
+#             'hop_length': int(22050 * 20 / 1000),
+#             'win_length': int(22050 * 40 / 1000)
+#         }
+#         self.EPS = np.spacing(1)
+#         self.clip_model, _ = clip.load("ViT-B/32", device=self.device)
+#         self.event_labels = event_labels
+#         self.id_to_event =  {i : label for i, label in enumerate(self.event_labels)}
+#         config = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/run_config.pth', map_location='cpu')
+#         config_parameters = dict(config)
+#         config_parameters['tao'] = 0.6
+#         if 'thres' not in config_parameters.keys():
+#             config_parameters['thres'] = 0.5
+#         if 'time_resolution' not in config_parameters.keys():
+#             config_parameters['time_resolution'] = 125
+#         model_parameters = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/run_model_7_loss=-0.0724.pt', map_location='cpu')
+#         self.model = getattr(tsd_models, config_parameters['model'])(config_parameters,
+#                     inputdim=64, outputdim=2, time_resolution=config_parameters['time_resolution'], **config_parameters['model_args'])
+#         self.model.load_state_dict(model_parameters)
+#         self.model = self.model.to(self.device).eval()
+#         self.re_embeds = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/text_emb.pth')
+#         self.ref_mel = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/ref_mel.pth')
 
-    def extract_feature(self, fname):
-        import soundfile as sf
-        y, sr = sf.read(fname, dtype='float32')
-        ti = y.shape[0]/sr
-        if y.ndim > 1:
-            y = y.mean(1)
-        y = librosa.resample(y, sr, 22050)
-        lms_feature = np.log(librosa.feature.melspectrogram(y, **self.MEL_ARGS) + self.EPS).T
-        return lms_feature,ti
+#     def extract_feature(self, fname):
+#         import soundfile as sf
+#         y, sr = sf.read(fname, dtype='float32')
+#         ti = y.shape[0]/sr
+#         if y.ndim > 1:
+#             y = y.mean(1)
+#         y = librosa.resample(y, sr, 22050)
+#         lms_feature = np.log(librosa.feature.melspectrogram(y, **self.MEL_ARGS) + self.EPS).T
+#         return lms_feature,ti
     
-    def build_clip(self, text):
-        text = clip.tokenize(text).to(self.device)
-        text_features = self.clip_model.encode_text(text)
-        return text_features
+#     def build_clip(self, text):
+#         text = clip.tokenize(text).to(self.device)
+#         text_features = self.clip_model.encode_text(text)
+#         return text_features
     
-    def cal_similarity(self, target, retrievals):
-        ans = []
-        for name in retrievals.keys():
-            tmp = retrievals[name]
-            s = torch.cosine_similarity(target.squeeze(), tmp.squeeze(), dim=0)
-            ans.append(s.item())
-        return ans.index(max(ans))
+#     def cal_similarity(self, target, retrievals):
+#         ans = []
+#         for name in retrievals.keys():
+#             tmp = retrievals[name]
+#             s = torch.cosine_similarity(target.squeeze(), tmp.squeeze(), dim=0)
+#             ans.append(s.item())
+#         return ans.index(max(ans))
     
-    def inference(self, text, audio_path):
-        from target_sound_detection.src.utils import median_filter, decode_with_timestamps
-        target_emb = self.build_clip(text)
-        idx = self.cal_similarity(target_emb, self.re_embeds)
-        target_event = self.id_to_event[idx]
-        embedding = self.ref_mel[target_event]
-        embedding = torch.from_numpy(embedding)
-        embedding = embedding.unsqueeze(0).to(self.device).float()
-        inputs,ti = self.extract_feature(audio_path)
-        inputs = torch.from_numpy(inputs)
-        inputs = inputs.unsqueeze(0).to(self.device).float()
-        with torch.no_grad():
-            self.model.eval()
-            decision, decision_up, logit = self.model(inputs, embedding)
-        pred = decision_up.detach().cpu().numpy()
-        pred = pred[:,:,0]
-        frame_num = decision_up.shape[1]
-        time_ratio = ti / frame_num
-        filtered_pred = median_filter(pred, window_size=1, threshold=0.5)
-        time_predictions = []
-        for index_k in range(filtered_pred.shape[0]):
-            decoded_pred = decode_with_timestamps(target_event, filtered_pred[index_k,:])
-            if len(decoded_pred) == 0:
-                decoded_pred.append((target_event, 0, 0))
-            for num_batch in range(len(decoded_pred)):
-                label_prediction = decoded_pred[num_batch]
-                for event_label, onset, offset in label_prediction:
-                    time_predictions.append({
-                        'onset': onset*time_ratio,
-                        'offset': offset*time_ratio,})
-        ans = ''
-        for i,item in enumerate(time_predictions):
-            ans = ans + 'segment' + str(i+1) + ' start_time: ' + str(item['onset']) + '  end_time: ' + str(item['offset']) + '\t'
-        return ans
+#     def inference(self, text, audio_path):
+#         from target_sound_detection.src.utils import median_filter, decode_with_timestamps
+#         target_emb = self.build_clip(text)
+#         idx = self.cal_similarity(target_emb, self.re_embeds)
+#         target_event = self.id_to_event[idx]
+#         embedding = self.ref_mel[target_event]
+#         embedding = torch.from_numpy(embedding)
+#         embedding = embedding.unsqueeze(0).to(self.device).float()
+#         inputs,ti = self.extract_feature(audio_path)
+#         inputs = torch.from_numpy(inputs)
+#         inputs = inputs.unsqueeze(0).to(self.device).float()
+#         with torch.no_grad():
+#             self.model.eval()
+#             decision, decision_up, logit = self.model(inputs, embedding)
+#         pred = decision_up.detach().cpu().numpy()
+#         pred = pred[:,:,0]
+#         frame_num = decision_up.shape[1]
+#         time_ratio = ti / frame_num
+#         filtered_pred = median_filter(pred, window_size=1, threshold=0.5)
+#         time_predictions = []
+#         for index_k in range(filtered_pred.shape[0]):
+#             decoded_pred = decode_with_timestamps(target_event, filtered_pred[index_k,:])
+#             if len(decoded_pred) == 0:
+#                 decoded_pred.append((target_event, 0, 0))
+#             for num_batch in range(len(decoded_pred)):
+#                 label_prediction = decoded_pred[num_batch]
+#                 for event_label, onset, offset in label_prediction:
+#                     time_predictions.append({
+#                         'onset': onset*time_ratio,
+#                         'offset': offset*time_ratio,})
+#         ans = ''
+#         for i,item in enumerate(time_predictions):
+#             ans = ans + 'segment' + str(i+1) + ' start_time: ' + str(item['onset']) + '  end_time: ' + str(item['offset']) + '\t'
+#         return ans
 
 class ConversationBot:
     def __init__(self):
@@ -845,7 +845,7 @@ class ConversationBot:
         # self.detection = SoundDetection(device="cpu")
         # self.binaural = Binaural(device="cpu")
         # self.extraction = SoundExtraction(device="cpu")
-        self.TSD = TargetSoundDetection(device="cpu")
+        # self.TSD = TargetSoundDetection(device="cpu")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
 
     def init_tools(self, interaction_type):
