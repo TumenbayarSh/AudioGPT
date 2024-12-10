@@ -588,94 +588,94 @@ class Speech_SS:
 #         soundfile.write(audio_filename, gen_wav, samplerate = 16000)
 #         return image_filename, audio_filename
 
-class SoundDetection:
-    def __init__(self, device):
-        self.device = device
-        self.sample_rate = 32000
-        self.window_size = 1024
-        self.hop_size = 320
-        self.mel_bins = 64
-        self.fmin = 50
-        self.fmax = 14000
-        self.model_type = 'PVT'
-        self.checkpoint_path = 'audio_detection/audio_infer/useful_ckpts/audio_detection.pth'
-        self.classes_num = detection_config.classes_num
-        self.labels = detection_config.labels
-        self.frames_per_second = self.sample_rate // self.hop_size
-        self.model = PVT(sample_rate=self.sample_rate, window_size=self.window_size,
-                         hop_size=self.hop_size, mel_bins=self.mel_bins, fmin=self.fmin, fmax=self.fmax,
-                         classes_num=self.classes_num)
-        checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
-        self.model.load_state_dict(checkpoint['model'])
-        self.model.to(device)
-
-    def inference(self, audio_path):
-        (waveform, _) = librosa.core.load(audio_path, sr=self.sample_rate, mono=True)
-        waveform = waveform[None, :]
-        waveform = torch.from_numpy(waveform)
-        waveform = waveform.to(self.device)
-        with torch.no_grad():
-            self.model.eval()
-            batch_output_dict = self.model(waveform, None)
-        framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
-
-        import matplotlib.pyplot as plt
-        sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
-        top_k = 10
-        top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]
-
-        stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=self.window_size,
-                                 hop_length=self.hop_size, window='hann', center=True)
-        frames_num = stft.shape[-1]
-        fig, axs = plt.subplots(2, 1, sharex=True, figsize=(10, 4))
-        axs[0].matshow(np.log(np.abs(stft)), origin='lower', aspect='auto', cmap='jet')
-        axs[0].set_ylabel('Frequency bins')
-        axs[0].set_title('Log spectrogram')
-        axs[1].matshow(top_result_mat.T, origin='upper', aspect='auto', cmap='jet', vmin=0, vmax=1)
-        axs[1].xaxis.set_ticks(np.arange(0, frames_num, self.frames_per_second))
-        axs[1].xaxis.set_ticklabels(np.arange(0, frames_num / self.frames_per_second))
-        axs[1].yaxis.set_ticks(np.arange(0, top_k))
-        axs[1].yaxis.set_ticklabels(np.array(self.labels)[sorted_indexes[0 : top_k]])
-        axs[1].yaxis.grid(color='k', linestyle='solid', linewidth=0.3, alpha=0.3)
-        axs[1].set_xlabel('Seconds')
-        axs[1].xaxis.set_ticks_position('bottom')
-        plt.tight_layout()
-        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
-        plt.savefig(image_filename)
-        return image_filename
-
-# class SoundExtraction:
+# class SoundDetection:
 #     def __init__(self, device):
-#         from sound_extraction.model.LASSNet import LASSNet
-#         from sound_extraction.utils.stft import STFT
-#         import torch.nn as nn
 #         self.device = device
-#         self.model_file = 'sound_extraction/useful_ckpts/LASSNet.pt'
-#         self.stft = STFT()
-#         self.model = nn.DataParallel(LASSNet(device)).to(device)
-#         checkpoint = torch.load(self.model_file, map_location=self.device)
+#         self.sample_rate = 32000
+#         self.window_size = 1024
+#         self.hop_size = 320
+#         self.mel_bins = 64
+#         self.fmin = 50
+#         self.fmax = 14000
+#         self.model_type = 'PVT'
+#         self.checkpoint_path = 'audio_detection/audio_infer/useful_ckpts/audio_detection.pth'
+#         self.classes_num = detection_config.classes_num
+#         self.labels = detection_config.labels
+#         self.frames_per_second = self.sample_rate // self.hop_size
+#         self.model = PVT(sample_rate=self.sample_rate, window_size=self.window_size,
+#                          hop_size=self.hop_size, mel_bins=self.mel_bins, fmin=self.fmin, fmax=self.fmax,
+#                          classes_num=self.classes_num)
+#         checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
 #         self.model.load_state_dict(checkpoint['model'])
-#         self.model.eval()
+#         self.model.to(device)
 
-#     def inference(self, inputs):
-#         from sound_extraction.utils.wav_io import load_wav, save_wav
-#         val = inputs.split(",")
-#         audio_path = val[0]
-#         text = val[1]
-#         waveform = load_wav(audio_path)
-#         waveform = torch.tensor(waveform).transpose(1,0)
-#         mixed_mag, mixed_phase = self.stft.transform(waveform)
-#         text_query = ['[CLS] ' + text]
-#         mixed_mag = mixed_mag.transpose(2,1).unsqueeze(0).to(self.device)
-#         est_mask = self.model(mixed_mag, text_query)
-#         est_mag = est_mask * mixed_mag
-#         est_mag = est_mag.squeeze(1)
-#         est_mag = est_mag.permute(0, 2, 1)
-#         est_wav = self.stft.inverse(est_mag.cpu().detach(), mixed_phase)
-#         est_wav = est_wav.squeeze(0).squeeze(0).numpy()
-#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-#         save_wav(est_wav, audio_filename)
-#         return audio_filename
+#     def inference(self, audio_path):
+#         (waveform, _) = librosa.core.load(audio_path, sr=self.sample_rate, mono=True)
+#         waveform = waveform[None, :]
+#         waveform = torch.from_numpy(waveform)
+#         waveform = waveform.to(self.device)
+#         with torch.no_grad():
+#             self.model.eval()
+#             batch_output_dict = self.model(waveform, None)
+#         framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
+
+#         import matplotlib.pyplot as plt
+#         sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
+#         top_k = 10
+#         top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]
+
+#         stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=self.window_size,
+#                                  hop_length=self.hop_size, window='hann', center=True)
+#         frames_num = stft.shape[-1]
+#         fig, axs = plt.subplots(2, 1, sharex=True, figsize=(10, 4))
+#         axs[0].matshow(np.log(np.abs(stft)), origin='lower', aspect='auto', cmap='jet')
+#         axs[0].set_ylabel('Frequency bins')
+#         axs[0].set_title('Log spectrogram')
+#         axs[1].matshow(top_result_mat.T, origin='upper', aspect='auto', cmap='jet', vmin=0, vmax=1)
+#         axs[1].xaxis.set_ticks(np.arange(0, frames_num, self.frames_per_second))
+#         axs[1].xaxis.set_ticklabels(np.arange(0, frames_num / self.frames_per_second))
+#         axs[1].yaxis.set_ticks(np.arange(0, top_k))
+#         axs[1].yaxis.set_ticklabels(np.array(self.labels)[sorted_indexes[0 : top_k]])
+#         axs[1].yaxis.grid(color='k', linestyle='solid', linewidth=0.3, alpha=0.3)
+#         axs[1].set_xlabel('Seconds')
+#         axs[1].xaxis.set_ticks_position('bottom')
+#         plt.tight_layout()
+#         image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+#         plt.savefig(image_filename)
+#         return image_filename
+
+class SoundExtraction:
+    def __init__(self, device):
+        from sound_extraction.model.LASSNet import LASSNet
+        from sound_extraction.utils.stft import STFT
+        import torch.nn as nn
+        self.device = device
+        self.model_file = 'sound_extraction/useful_ckpts/LASSNet.pt'
+        self.stft = STFT()
+        self.model = nn.DataParallel(LASSNet(device)).to(device)
+        checkpoint = torch.load(self.model_file, map_location=self.device)
+        self.model.load_state_dict(checkpoint['model'])
+        self.model.eval()
+
+    def inference(self, inputs):
+        from sound_extraction.utils.wav_io import load_wav, save_wav
+        val = inputs.split(",")
+        audio_path = val[0]
+        text = val[1]
+        waveform = load_wav(audio_path)
+        waveform = torch.tensor(waveform).transpose(1,0)
+        mixed_mag, mixed_phase = self.stft.transform(waveform)
+        text_query = ['[CLS] ' + text]
+        mixed_mag = mixed_mag.transpose(2,1).unsqueeze(0).to(self.device)
+        est_mask = self.model(mixed_mag, text_query)
+        est_mag = est_mask * mixed_mag
+        est_mag = est_mag.squeeze(1)
+        est_mag = est_mag.permute(0, 2, 1)
+        est_wav = self.stft.inverse(est_mag.cpu().detach(), mixed_phase)
+        est_wav = est_wav.squeeze(0).squeeze(0).numpy()
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        save_wav(est_wav, audio_filename)
+        return audio_filename
 
 # class Binaural:
 #     def __init__(self, device):
@@ -842,9 +842,9 @@ class ConversationBot:
         # self.inpaint = Inpaint(device="cpu")
         # self.tts_ood = TTS_OOD(device="cpu")
         # self.geneface = GeneFace(device="cpu")
-        self.detection = SoundDetection(device="cpu")
+        # self.detection = SoundDetection(device="cpu")
         # self.binaural = Binaural(device="cpu")
-        # self.extraction = SoundExtraction(device="cpu")
+        self.extraction = SoundExtraction(device="cpu")
         self.TSD = TargetSoundDetection(device="cpu")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
 
