@@ -1004,4 +1004,4 @@ if __name__ == '__main__':
         # ... (Truncated for brevity, interface setup remains same as user provided code)
         pass
 
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
+    # demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
