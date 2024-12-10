@@ -60,6 +60,15 @@ pipeline {
                 '''
             }
         }
+        stage('Upgrade Dependencies') {
+            steps {
+                sh '''
+                export PATH="$MINICONDA_DIR/bin:$PATH"
+                conda run -n audiogpt pip install --upgrade diffusers huggingface_hub
+                '''
+            }
+        }
+
 
         // stage('Download Models') {
         //     steps {
