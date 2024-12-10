@@ -286,43 +286,43 @@ class I2A:
 #         soundfile.write(audio_filename, out, samplerate=22050)
 #         return audio_filename
 
-class T2S:
-    def __init__(self, device=None):
-        from inference.svs.ds_e2e import DiffSingerE2EInfer
-        if device is None:
-            device = 'cpu'
-        print("Initializing DiffSinger to %s" % device)
-        self.device = device
-        self.exp_name = 'checkpoints/0831_opencpop_ds1000'
-        self.config= 'NeuralSeq/egs/egs_bases/svs/midi/e2e/opencpop/ds1000.yaml'
-        self.set_model_hparams()
-        self.pipe = DiffSingerE2EInfer(self.hp, device)
-        self.default_inp = {
-            'text': '你 说 你 不 SP 懂 为 何 在 这 时 牵 手 AP',
-            'notes': 'D#4/Eb4 | D#4/Eb4 | D#4/Eb4 | D#4/Eb4 | rest | D#4/Eb4 | D4 | D4 | D4 | D#4/Eb4 | F4 | D#4/Eb4 | D4 | rest',
-            'notes_duration': '0.113740 | 0.329060 | 0.287950 | 0.133480 | 0.150900 | 0.484730 | 0.242010 | 0.180820 | 0.343570 | 0.152050 | 0.266720 | 0.280310 | 0.633300 | 0.444590'
-        }
+# class T2S:
+#     def __init__(self, device=None):
+#         from inference.svs.ds_e2e import DiffSingerE2EInfer
+#         if device is None:
+#             device = 'cpu'
+#         print("Initializing DiffSinger to %s" % device)
+#         self.device = device
+#         self.exp_name = 'checkpoints/0831_opencpop_ds1000'
+#         self.config= 'NeuralSeq/egs/egs_bases/svs/midi/e2e/opencpop/ds1000.yaml'
+#         self.set_model_hparams()
+#         self.pipe = DiffSingerE2EInfer(self.hp, device)
+#         self.default_inp = {
+#             'text': '你 说 你 不 SP 懂 为 何 在 这 时 牵 手 AP',
+#             'notes': 'D#4/Eb4 | D#4/Eb4 | D#4/Eb4 | D#4/Eb4 | rest | D#4/Eb4 | D4 | D4 | D4 | D#4/Eb4 | F4 | D#4/Eb4 | D4 | rest',
+#             'notes_duration': '0.113740 | 0.329060 | 0.287950 | 0.133480 | 0.150900 | 0.484730 | 0.242010 | 0.180820 | 0.343570 | 0.152050 | 0.266720 | 0.280310 | 0.633300 | 0.444590'
+#         }
 
-    def set_model_hparams(self):
-        set_hparams(config=self.config, exp_name=self.exp_name, print_hparams=False)
-        self.hp = hp
+#     def set_model_hparams(self):
+#         set_hparams(config=self.config, exp_name=self.exp_name, print_hparams=False)
+#         self.hp = hp
 
-    def inference(self, inputs):
-        self.set_model_hparams()
-        val = inputs.split(",")
-        key = ['text', 'notes', 'notes_duration']
-        try:
-            inp = {k: v for k, v in zip(key, val)}
-            wav = self.pipe.infer_once(inp)
-        except:
-            print('Error occurs. Generate default audio sample.\n')
-            inp = self.default_inp
-            wav = self.pipe.infer_once(inp)
-        wav *= 32767
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
-        print(f"Processed T2S.run, audio_filename: {audio_filename}")
-        return audio_filename
+#     def inference(self, inputs):
+#         self.set_model_hparams()
+#         val = inputs.split(",")
+#         key = ['text', 'notes', 'notes_duration']
+#         try:
+#             inp = {k: v for k, v in zip(key, val)}
+#             wav = self.pipe.infer_once(inp)
+#         except:
+#             print('Error occurs. Generate default audio sample.\n')
+#             inp = self.default_inp
+#             wav = self.pipe.infer_once(inp)
+#         wav *= 32767
+#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+#         wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
+#         print(f"Processed T2S.run, audio_filename: {audio_filename}")
+#         return audio_filename
 
 class A2T:
     def __init__(self, device):
@@ -833,7 +833,7 @@ class ConversationBot:
         self.i2t = ImageCaptioning(device="cpu")
         # self.t2a = T2A(device="cpu")
         # self.tts = TTS(device="cpu")
-        self.t2s = T2S(device="cpu")
+        # self.t2s = T2S(device="cpu")
         self.i2a = I2A(device="cpu")
         self.a2t = A2T(device="cpu")
         self.asr = ASR(device="cpu")
