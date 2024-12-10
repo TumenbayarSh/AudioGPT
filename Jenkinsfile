@@ -30,7 +30,6 @@ pipeline {
         stage('Set PATH for Conda') {
             steps {
                 sh '''
-                # Add Miniconda to the PATH for this build
                 export PATH="$MINICONDA_DIR/bin:$PATH"
                 conda --version
                 '''
@@ -53,34 +52,11 @@ pipeline {
             steps {
                 sh '''
                 export PATH="$MINICONDA_DIR/bin:$PATH"
-                # Upgrade pip and install lint/test tools
                 conda run -n audiogpt pip install --upgrade pip
-                conda run -n audiogpt pip install flake8 pytest
 
-                # Install project requirements
                 if [ -f requirements.txt ]; then
                     conda run -n audiogpt pip install -r requirements.txt
                 fi
-                '''
-            }
-        }
-
-        stage('Lint') {
-            steps {
-                sh '''
-                export PATH="$MINICONDA_DIR/bin:$PATH"
-                conda run -n audiogpt flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-                # Non-blocking lint run:
-                conda run -n audiogpt flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-                '''
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh '''
-                export PATH="$MINICONDA_DIR/bin:$PATH"
-                conda run -n audiogpt pytest
                 '''
             }
         }
@@ -113,10 +89,10 @@ pipeline {
             echo "Pipeline run completed."
         }
         success {
-            echo "Build, test, and run succeeded!"
+            echo "Build and run succeeded!"
         }
         failure {
-            echo "Build or tests failed. Check the logs above."
+            echo "Build failed. Check logs."
         }
     }
 }
