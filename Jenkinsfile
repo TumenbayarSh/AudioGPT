@@ -61,14 +61,14 @@ pipeline {
             }
         }
 
-        stage('Download Models') {
-            steps {
-                sh '''
-                export PATH="$MINICONDA_DIR/bin:$PATH"
-                conda run -n audiogpt bash download.sh
-                '''
-            }
-        }
+        // stage('Download Models') {
+        //     steps {
+        //         sh '''
+        //         export PATH="$MINICONDA_DIR/bin:$PATH"
+        //         conda run -n audiogpt bash download.sh
+        //         '''
+        //     }
+        // }
 
         stage('Run AudioGPT') {
             environment {
