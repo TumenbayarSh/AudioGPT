@@ -461,132 +461,132 @@ class TTS_OOD:
             f"Processed GenerSpeech.run. Input text:{val[1]}. Input reference audio: {val[0]}. Output Audio_filename: {audio_filename}")
         return audio_filename
 
-class Inpaint:
-    def __init__(self, device):
-        print("Initializing Make-An-Audio-inpaint to %s" % device)
-        self.device = device
-        self.sampler = self._initialize_model_inpaint('text_to_audio/Make_An_Audio/configs/inpaint/txt2audio_args.yaml',
-                                                      'text_to_audio/Make_An_Audio/useful_ckpts/inpaint7_epoch00047.ckpt')
-        self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
-        self.cmap_transform = matplotlib.cm.viridis
+# class Inpaint:
+#     def __init__(self, device):
+#         print("Initializing Make-An-Audio-inpaint to %s" % device)
+#         self.device = device
+#         self.sampler = self._initialize_model_inpaint('text_to_audio/Make_An_Audio/configs/inpaint/txt2audio_args.yaml',
+#                                                       'text_to_audio/Make_An_Audio/useful_ckpts/inpaint7_epoch00047.ckpt')
+#         self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
+#         self.cmap_transform = matplotlib.cm.viridis
 
-    def _initialize_model_inpaint(self, config, ckpt):
-        config = OmegaConf.load(config)
-        model = instantiate_from_config(config.model)
-        model.load_state_dict(torch.load(ckpt, map_location='cpu')["state_dict"], strict=False)
-        device = torch.device("cpu")
-        model = model.to(device)
-        sampler = DDIMSampler(model)
-        return sampler
+#     def _initialize_model_inpaint(self, config, ckpt):
+#         config = OmegaConf.load(config)
+#         model = instantiate_from_config(config.model)
+#         model.load_state_dict(torch.load(ckpt, map_location='cpu')["state_dict"], strict=False)
+#         device = torch.device("cpu")
+#         model = model.to(device)
+#         sampler = DDIMSampler(model)
+#         return sampler
 
-    def make_batch_sd(self, mel, mask, num_samples=1):
-        mel = torch.from_numpy(mel)[None,None,...].to(dtype=torch.float32)
-        mask = torch.from_numpy(mask)[None,None,...].to(dtype=torch.float32)
-        masked_mel = (1 - mask) * mel
-        mel = mel * 2 - 1
-        mask = mask * 2 - 1
-        masked_mel = masked_mel * 2 -1
-        batch = {
-             "mel": repeat(mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
-             "mask": repeat(mask.to(device=self.device), "1 ... -> n ...", n=num_samples),
-             "masked_mel": repeat(masked_mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
-        }
-        return batch
+#     def make_batch_sd(self, mel, mask, num_samples=1):
+#         mel = torch.from_numpy(mel)[None,None,...].to(dtype=torch.float32)
+#         mask = torch.from_numpy(mask)[None,None,...].to(dtype=torch.float32)
+#         masked_mel = (1 - mask) * mel
+#         mel = mel * 2 - 1
+#         mask = mask * 2 - 1
+#         masked_mel = masked_mel * 2 -1
+#         batch = {
+#              "mel": repeat(mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
+#              "mask": repeat(mask.to(device=self.device), "1 ... -> n ...", n=num_samples),
+#              "masked_mel": repeat(masked_mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
+#         }
+#         return batch
 
-    def gen_mel(self, input_audio_path):
-        SAMPLE_RATE = 16000
-        sr, ori_wav = wavfile.read(input_audio_path)
-        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0
-        if len(ori_wav.shape)==2:# stereo
-            ori_wav = librosa.to_mono(ori_wav.T)
-        ori_wav = librosa.resample(ori_wav,orig_sr = sr,target_sr = SAMPLE_RATE)
-        mel_len,hop_size = 848,256
-        input_len = mel_len * hop_size
-        if len(ori_wav) < input_len:
-            input_wav = np.pad(ori_wav,(0,mel_len*hop_size),constant_values=0)
-        else:
-            input_wav = ori_wav[:input_len]
-        mel = TRANSFORMS_16000(input_wav)
-        return mel
+#     def gen_mel(self, input_audio_path):
+#         SAMPLE_RATE = 16000
+#         sr, ori_wav = wavfile.read(input_audio_path)
+#         ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0
+#         if len(ori_wav.shape)==2:# stereo
+#             ori_wav = librosa.to_mono(ori_wav.T)
+#         ori_wav = librosa.resample(ori_wav,orig_sr = sr,target_sr = SAMPLE_RATE)
+#         mel_len,hop_size = 848,256
+#         input_len = mel_len * hop_size
+#         if len(ori_wav) < input_len:
+#             input_wav = np.pad(ori_wav,(0,mel_len*hop_size),constant_values=0)
+#         else:
+#             input_wav = ori_wav[:input_len]
+#         mel = TRANSFORMS_16000(input_wav)
+#         return mel
 
-    def gen_mel_audio(self, input_audio):
-        SAMPLE_RATE = 16000
-        sr,ori_wav = input_audio
-        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0
-        if len(ori_wav.shape)==2:
-            ori_wav = librosa.to_mono(ori_wav.T)
-        ori_wav = librosa.resample(ori_wav,orig_sr = sr,target_sr = SAMPLE_RATE)
-        mel_len,hop_size = 848,256
-        input_len = mel_len * hop_size
-        if len(ori_wav) < input_len:
-            input_wav = np.pad(ori_wav,(0,mel_len*hop_size),constant_values=0)
-        else:
-            input_wav = ori_wav[:input_len]
-        mel = TRANSFORMS_16000(input_wav)
-        return mel
+#     def gen_mel_audio(self, input_audio):
+#         SAMPLE_RATE = 16000
+#         sr,ori_wav = input_audio
+#         ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0
+#         if len(ori_wav.shape)==2:
+#             ori_wav = librosa.to_mono(ori_wav.T)
+#         ori_wav = librosa.resample(ori_wav,orig_sr = sr,target_sr = SAMPLE_RATE)
+#         mel_len,hop_size = 848,256
+#         input_len = mel_len * hop_size
+#         if len(ori_wav) < input_len:
+#             input_wav = np.pad(ori_wav,(0,mel_len*hop_size),constant_values=0)
+#         else:
+#             input_wav = ori_wav[:input_len]
+#         mel = TRANSFORMS_16000(input_wav)
+#         return mel
 
-    def show_mel_fn(self, input_audio_path):
-        crop_len = 500
-        crop_mel = self.gen_mel(input_audio_path)[:,:crop_len]
-        color_mel = self.cmap_transform(crop_mel)
-        image = Image.fromarray((color_mel*255).astype(np.uint8))
-        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
-        image.save(image_filename)
-        return image_filename
+#     def show_mel_fn(self, input_audio_path):
+#         crop_len = 500
+#         crop_mel = self.gen_mel(input_audio_path)[:,:crop_len]
+#         color_mel = self.cmap_transform(crop_mel)
+#         image = Image.fromarray((color_mel*255).astype(np.uint8))
+#         image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+#         image.save(image_filename)
+#         return image_filename
 
-    def inpaint(self, batch, seed, ddim_steps, num_samples=1, W=512, H=512):
-        model = self.sampler.model
-        prng = np.random.RandomState(seed)
-        start_code = prng.randn(num_samples, model.first_stage_model.embed_dim, H // 8, W // 8)
-        start_code = torch.from_numpy(start_code).to(device=self.device, dtype=torch.float32)
+#     def inpaint(self, batch, seed, ddim_steps, num_samples=1, W=512, H=512):
+#         model = self.sampler.model
+#         prng = np.random.RandomState(seed)
+#         start_code = prng.randn(num_samples, model.first_stage_model.embed_dim, H // 8, W // 8)
+#         start_code = torch.from_numpy(start_code).to(device=self.device, dtype=torch.float32)
 
-        c = model.get_first_stage_encoding(model.encode_first_stage(batch["masked_mel"]))
-        cc = torch.nn.functional.interpolate(batch["mask"],size=c.shape[-2:])
-        c = torch.cat((c, cc), dim=1)
-        shape = (c.shape[1]-1,)+c.shape[2:]
-        samples_ddim, _ = self.sampler.sample(S=ddim_steps,
-                                              conditioning=c,
-                                              batch_size=c.shape[0],
-                                              shape=shape,
-                                              verbose=False)
-        x_samples_ddim = model.decode_first_stage(samples_ddim)
-        mel = torch.clamp((batch["mel"]+1.0)/2.0,min=0.0, max=1.0)
-        mask = torch.clamp((batch["mask"]+1.0)/2.0,min=0.0, max=1.0)
-        predicted_mel = torch.clamp((x_samples_ddim+1.0)/2.0,min=0.0, max=1.0)
-        inpainted = (1-mask)*mel+mask*predicted_mel
-        inpainted = inpainted.cpu().numpy().squeeze()
-        inapint_wav = self.vocoder.vocode(inpainted)
-        return inpainted, inapint_wav
+#         c = model.get_first_stage_encoding(model.encode_first_stage(batch["masked_mel"]))
+#         cc = torch.nn.functional.interpolate(batch["mask"],size=c.shape[-2:])
+#         c = torch.cat((c, cc), dim=1)
+#         shape = (c.shape[1]-1,)+c.shape[2:]
+#         samples_ddim, _ = self.sampler.sample(S=ddim_steps,
+#                                               conditioning=c,
+#                                               batch_size=c.shape[0],
+#                                               shape=shape,
+#                                               verbose=False)
+#         x_samples_ddim = model.decode_first_stage(samples_ddim)
+#         mel = torch.clamp((batch["mel"]+1.0)/2.0,min=0.0, max=1.0)
+#         mask = torch.clamp((batch["mask"]+1.0)/2.0,min=0.0, max=1.0)
+#         predicted_mel = torch.clamp((x_samples_ddim+1.0)/2.0,min=0.0, max=1.0)
+#         inpainted = (1-mask)*mel+mask*predicted_mel
+#         inpainted = inpainted.cpu().numpy().squeeze()
+#         inapint_wav = self.vocoder.vocode(inpainted)
+#         return inpainted, inapint_wav
 
-    def inference(self, input_audio, mel_and_mask, seed = 55, ddim_steps = 100):
-        SAMPLE_RATE = 16000
-        torch.set_grad_enabled(False)
-        mel_img = Image.open(mel_and_mask['image'])
-        mask_img = Image.open(mel_and_mask["mask"])
-        show_mel = np.array(mel_img.convert("L"))/255
-        mask = np.array(mask_img.convert("L"))/255
-        mel_bins,mel_len = 80,848
-        input_mel = self.gen_mel_audio(input_audio)[:,:mel_len]
-        mask = np.pad(mask,((0,0),(0,mel_len-mask.shape[1])),mode='constant',constant_values=0)
-        with torch.no_grad():
-            batch = self.make_batch_sd(input_mel,mask,num_samples=1)
-            inpainted,gen_wav = self.inpaint(
-                batch=batch,
-                seed=seed,
-                ddim_steps=ddim_steps,
-                num_samples=1,
-                H=mel_bins, W=mel_len
-            )
-        inpainted = inpainted[:,:show_mel.shape[1]]
-        color_mel = self.cmap_transform(inpainted)
-        input_len = int(input_audio[1].shape[0] * SAMPLE_RATE / input_audio[0])
-        gen_wav = (gen_wav * 32768).astype(np.int16)[:input_len]
-        image = Image.fromarray((color_mel*255).astype(np.uint8))
-        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
-        image.save(image_filename)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        soundfile.write(audio_filename, gen_wav, samplerate = 16000)
-        return image_filename, audio_filename
+#     def inference(self, input_audio, mel_and_mask, seed = 55, ddim_steps = 100):
+#         SAMPLE_RATE = 16000
+#         torch.set_grad_enabled(False)
+#         mel_img = Image.open(mel_and_mask['image'])
+#         mask_img = Image.open(mel_and_mask["mask"])
+#         show_mel = np.array(mel_img.convert("L"))/255
+#         mask = np.array(mask_img.convert("L"))/255
+#         mel_bins,mel_len = 80,848
+#         input_mel = self.gen_mel_audio(input_audio)[:,:mel_len]
+#         mask = np.pad(mask,((0,0),(0,mel_len-mask.shape[1])),mode='constant',constant_values=0)
+#         with torch.no_grad():
+#             batch = self.make_batch_sd(input_mel,mask,num_samples=1)
+#             inpainted,gen_wav = self.inpaint(
+#                 batch=batch,
+#                 seed=seed,
+#                 ddim_steps=ddim_steps,
+#                 num_samples=1,
+#                 H=mel_bins, W=mel_len
+#             )
+#         inpainted = inpainted[:,:show_mel.shape[1]]
+#         color_mel = self.cmap_transform(inpainted)
+#         input_len = int(input_audio[1].shape[0] * SAMPLE_RATE / input_audio[0])
+#         gen_wav = (gen_wav * 32768).astype(np.int16)[:input_len]
+#         image = Image.fromarray((color_mel*255).astype(np.uint8))
+#         image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+#         image.save(image_filename)
+#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+#         soundfile.write(audio_filename, gen_wav, samplerate = 16000)
+#         return image_filename, audio_filename
 
 class SoundDetection:
     def __init__(self, device):
@@ -839,7 +839,7 @@ class ConversationBot:
         self.asr = ASR(device="cpu")
         self.SE_SS_SC = Speech_Enh_SS_SC(device="cpu")
         self.SS = Speech_SS(device="cpu")
-        self.inpaint = Inpaint(device="cpu")
+        # self.inpaint = Inpaint(device="cpu")
         self.tts_ood = TTS_OOD(device="cpu")
         # self.geneface = GeneFace(device="cpu")
         self.detection = SoundDetection(device="cpu")
