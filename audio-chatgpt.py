@@ -844,7 +844,7 @@ class ConversationBot:
         # self.geneface = GeneFace(device="cpu")
         # self.detection = SoundDetection(device="cpu")
         # self.binaural = Binaural(device="cpu")
-        self.extraction = SoundExtraction(device="cpu")
+        # self.extraction = SoundExtraction(device="cpu")
         self.TSD = TargetSoundDetection(device="cpu")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
 
