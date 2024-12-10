@@ -1,7 +1,5 @@
 pipeline {
-    agent {
-        label 'linux'
-    }
+    agent any
 
     environment {
         MINICONDA_DIR = "${WORKSPACE}/miniconda"
