@@ -206,62 +206,62 @@ class ImageCaptioning:
 #         print(f"Processed T2A.run, text: {text}, audio_filename: {audio_filename}")
 #         return audio_filename
 
-class I2A:
-    def __init__(self, device):
-        print("Initializing Make-An-Audio-Image to %s" % device)
-        self.device = device
-        self.sampler = self._initialize_model('text_to_audio/Make_An_Audio/configs/img_to_audio/img2audio_args.yaml',
-                                              'text_to_audio/Make_An_Audio/useful_ckpts/ta54_epoch=000216.ckpt', device=device)
-        self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
+# class I2A:
+#     def __init__(self, device):
+#         print("Initializing Make-An-Audio-Image to %s" % device)
+#         self.device = device
+#         self.sampler = self._initialize_model('text_to_audio/Make_An_Audio/configs/img_to_audio/img2audio_args.yaml',
+#                                               'text_to_audio/Make_An_Audio/useful_ckpts/ta54_epoch=000216.ckpt', device=device)
+#         self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
 
-    def _initialize_model(self, config, ckpt, device):
-        config = OmegaConf.load(config)
-        model = instantiate_from_config(config.model)
-        model.load_state_dict(torch.load(ckpt, map_location='cpu')["state_dict"], strict=False)
-        model = model.to(device)
-        sampler = DDIMSampler(model)
-        return sampler
+#     def _initialize_model(self, config, ckpt, device):
+#         config = OmegaConf.load(config)
+#         model = instantiate_from_config(config.model)
+#         model.load_state_dict(torch.load(ckpt, map_location='cpu')["state_dict"], strict=False)
+#         model = model.to(device)
+#         sampler = DDIMSampler(model)
+#         return sampler
 
-    def img2audio(self, image, seed=55, scale=3, ddim_steps=100, W=624, H=80):
-        SAMPLE_RATE = 16000
-        n_samples = 1
-        prng = np.random.RandomState(seed)
-        start_code = prng.randn(n_samples, self.sampler.model.first_stage_model.embed_dim, H // 8, W // 8)
-        start_code = torch.from_numpy(start_code).to(device=self.device, dtype=torch.float32)
-        uc = self.sampler.model.get_learned_conditioning(n_samples * [""])
-        image = Image.open(image)
-        image = self.sampler.model.cond_stage_model.preprocess(image).unsqueeze(0)
-        image = image.to(self.device)
-        image_embedding = self.sampler.model.cond_stage_model.forward_img(image)
-        c = image_embedding.repeat(n_samples, 1, 1)
-        shape = [self.sampler.model.first_stage_model.embed_dim, H//8, W//8]
-        samples_ddim, _ = self.sampler.sample(
-            S=ddim_steps,
-            conditioning=c,
-            batch_size=n_samples,
-            shape=shape,
-            verbose=False,
-            unconditional_guidance_scale=scale,
-            unconditional_conditioning=uc,
-            x_T=start_code
-        )
+#     def img2audio(self, image, seed=55, scale=3, ddim_steps=100, W=624, H=80):
+#         SAMPLE_RATE = 16000
+#         n_samples = 1
+#         prng = np.random.RandomState(seed)
+#         start_code = prng.randn(n_samples, self.sampler.model.first_stage_model.embed_dim, H // 8, W // 8)
+#         start_code = torch.from_numpy(start_code).to(device=self.device, dtype=torch.float32)
+#         uc = self.sampler.model.get_learned_conditioning(n_samples * [""])
+#         image = Image.open(image)
+#         image = self.sampler.model.cond_stage_model.preprocess(image).unsqueeze(0)
+#         image = image.to(self.device)
+#         image_embedding = self.sampler.model.cond_stage_model.forward_img(image)
+#         c = image_embedding.repeat(n_samples, 1, 1)
+#         shape = [self.sampler.model.first_stage_model.embed_dim, H//8, W//8]
+#         samples_ddim, _ = self.sampler.sample(
+#             S=ddim_steps,
+#             conditioning=c,
+#             batch_size=n_samples,
+#             shape=shape,
+#             verbose=False,
+#             unconditional_guidance_scale=scale,
+#             unconditional_conditioning=uc,
+#             x_T=start_code
+#         )
 
-        x_samples_ddim = self.sampler.model.decode_first_stage(samples_ddim)
-        x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0)
-        wav_list = []
-        for idx,spec in enumerate(x_samples_ddim):
-            wav = self.vocoder.vocode(spec)
-            wav_list.append((SAMPLE_RATE,wav))
-        best_wav = wav_list[0]
-        return best_wav
+#         x_samples_ddim = self.sampler.model.decode_first_stage(samples_ddim)
+#         x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0)
+#         wav_list = []
+#         for idx,spec in enumerate(x_samples_ddim):
+#             wav = self.vocoder.vocode(spec)
+#             wav_list.append((SAMPLE_RATE,wav))
+#         best_wav = wav_list[0]
+#         return best_wav
 
-    def inference(self, image, seed=55, scale=3, ddim_steps=100, W=624, H=80):
-        with torch.no_grad():
-            result = self.img2audio(image, seed=seed, scale=scale, ddim_steps=ddim_steps, W=W, H=H)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        soundfile.write(audio_filename, result[1], samplerate=16000)
-        print(f"Processed I2A.run, image_filename: {image}, audio_filename: {audio_filename}")
-        return audio_filename
+#     def inference(self, image, seed=55, scale=3, ddim_steps=100, W=624, H=80):
+#         with torch.no_grad():
+#             result = self.img2audio(image, seed=seed, scale=scale, ddim_steps=ddim_steps, W=W, H=H)
+#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+#         soundfile.write(audio_filename, result[1], samplerate=16000)
+#         print(f"Processed I2A.run, image_filename: {image}, audio_filename: {audio_filename}")
+#         return audio_filename
 
 # class TTS:
 #     def __init__(self, device=None):
@@ -644,97 +644,97 @@ class SoundDetection:
         plt.savefig(image_filename)
         return image_filename
 
-class SoundExtraction:
-    def __init__(self, device):
-        from sound_extraction.model.LASSNet import LASSNet
-        from sound_extraction.utils.stft import STFT
-        import torch.nn as nn
-        self.device = device
-        self.model_file = 'sound_extraction/useful_ckpts/LASSNet.pt'
-        self.stft = STFT()
-        self.model = nn.DataParallel(LASSNet(device)).to(device)
-        checkpoint = torch.load(self.model_file, map_location=self.device)
-        self.model.load_state_dict(checkpoint['model'])
-        self.model.eval()
+# class SoundExtraction:
+#     def __init__(self, device):
+#         from sound_extraction.model.LASSNet import LASSNet
+#         from sound_extraction.utils.stft import STFT
+#         import torch.nn as nn
+#         self.device = device
+#         self.model_file = 'sound_extraction/useful_ckpts/LASSNet.pt'
+#         self.stft = STFT()
+#         self.model = nn.DataParallel(LASSNet(device)).to(device)
+#         checkpoint = torch.load(self.model_file, map_location=self.device)
+#         self.model.load_state_dict(checkpoint['model'])
+#         self.model.eval()
 
-    def inference(self, inputs):
-        from sound_extraction.utils.wav_io import load_wav, save_wav
-        val = inputs.split(",")
-        audio_path = val[0]
-        text = val[1]
-        waveform = load_wav(audio_path)
-        waveform = torch.tensor(waveform).transpose(1,0)
-        mixed_mag, mixed_phase = self.stft.transform(waveform)
-        text_query = ['[CLS] ' + text]
-        mixed_mag = mixed_mag.transpose(2,1).unsqueeze(0).to(self.device)
-        est_mask = self.model(mixed_mag, text_query)
-        est_mag = est_mask * mixed_mag
-        est_mag = est_mag.squeeze(1)
-        est_mag = est_mag.permute(0, 2, 1)
-        est_wav = self.stft.inverse(est_mag.cpu().detach(), mixed_phase)
-        est_wav = est_wav.squeeze(0).squeeze(0).numpy()
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        save_wav(est_wav, audio_filename)
-        return audio_filename
+#     def inference(self, inputs):
+#         from sound_extraction.utils.wav_io import load_wav, save_wav
+#         val = inputs.split(",")
+#         audio_path = val[0]
+#         text = val[1]
+#         waveform = load_wav(audio_path)
+#         waveform = torch.tensor(waveform).transpose(1,0)
+#         mixed_mag, mixed_phase = self.stft.transform(waveform)
+#         text_query = ['[CLS] ' + text]
+#         mixed_mag = mixed_mag.transpose(2,1).unsqueeze(0).to(self.device)
+#         est_mask = self.model(mixed_mag, text_query)
+#         est_mag = est_mask * mixed_mag
+#         est_mag = est_mag.squeeze(1)
+#         est_mag = est_mag.permute(0, 2, 1)
+#         est_wav = self.stft.inverse(est_mag.cpu().detach(), mixed_phase)
+#         est_wav = est_wav.squeeze(0).squeeze(0).numpy()
+#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+#         save_wav(est_wav, audio_filename)
+#         return audio_filename
 
-class Binaural:
-    def __init__(self, device):
-        from src.models import BinauralNetwork
-        self.device = device
-        self.model_file = 'mono2binaural/useful_ckpts/m2b/binaural_network.net'
-        self.position_file = ['mono2binaural/useful_ckpts/m2b/tx_positions.txt',
-                              'mono2binaural/useful_ckpts/m2b/tx_positions2.txt',
-                              'mono2binaural/useful_ckpts/m2b/tx_positions3.txt',
-                              'mono2binaural/useful_ckpts/m2b/tx_positions4.txt',
-                              'mono2binaural/useful_ckpts/m2b/tx_positions5.txt']
-        self.net = BinauralNetwork(view_dim=7,
-                      warpnet_layers=4,
-                      warpnet_channels=64,
-                      )
-        self.net.load_from_file(self.model_file)
-        self.sr = 48000
+# class Binaural:
+#     def __init__(self, device):
+#         from src.models import BinauralNetwork
+#         self.device = device
+#         self.model_file = 'mono2binaural/useful_ckpts/m2b/binaural_network.net'
+#         self.position_file = ['mono2binaural/useful_ckpts/m2b/tx_positions.txt',
+#                               'mono2binaural/useful_ckpts/m2b/tx_positions2.txt',
+#                               'mono2binaural/useful_ckpts/m2b/tx_positions3.txt',
+#                               'mono2binaural/useful_ckpts/m2b/tx_positions4.txt',
+#                               'mono2binaural/useful_ckpts/m2b/tx_positions5.txt']
+#         self.net = BinauralNetwork(view_dim=7,
+#                       warpnet_layers=4,
+#                       warpnet_channels=64,
+#                       )
+#         self.net.load_from_file(self.model_file)
+#         self.sr = 48000
 
-    def inference(self, audio_path):
-        mono, sr  = librosa.load(path=audio_path, sr=self.sr, mono=True)
-        mono = torch.from_numpy(mono)
-        mono = mono.unsqueeze(0)
-        import random
-        rand_int = random.randint(0,4)
-        view = np.loadtxt(self.position_file[rand_int]).transpose().astype(np.float32)
-        view = torch.from_numpy(view)
-        if not view.shape[-1] * 400 == mono.shape[-1]:
-            mono = mono[:,:(mono.shape[-1]//400)*400]
-            if view.shape[1]*400 > mono.shape[1]:
-                m_a = view.shape[1] - mono.shape[-1]//400
-                rand_st = random.randint(0,m_a)
-                view = view[:,m_a:m_a+(mono.shape[-1]//400)]
-        self.net.eval()
-        mono, view = mono.to(self.device), view.to(self.device)
-        chunk_size = 48000
-        rec_field = 1000
-        rec_field -= rec_field % 400
-        chunks = [
-            {
-                "mono": mono[:, max(0, i-rec_field):i+chunk_size],
-                "view": view[:, max(0, i-rec_field)//400:(i+chunk_size)//400]
-            }
-            for i in range(0, mono.shape[-1], chunk_size)
-        ]
-        for i, chunk in enumerate(chunks):
-            with torch.no_grad():
-                m = chunk["mono"].unsqueeze(0)
-                v = chunk["view"].unsqueeze(0)
-                binaural = self.net(m, v).squeeze(0)
-                if i > 0:
-                    binaural = binaural[:, -(m.shape[-1]-rec_field):]
-                chunk["binaural"] = binaural
-        binaural = torch.cat([chunk["binaural"] for chunk in chunks], dim=-1)
-        binaural = torch.clamp(binaural, min=-1, max=1).cpu()
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        import torchaudio
-        torchaudio.save(audio_filename, binaural, self.sr)
-        print(f"Processed Binaural.run, audio_filename: {audio_filename}")
-        return audio_filename
+#     def inference(self, audio_path):
+#         mono, sr  = librosa.load(path=audio_path, sr=self.sr, mono=True)
+#         mono = torch.from_numpy(mono)
+#         mono = mono.unsqueeze(0)
+#         import random
+#         rand_int = random.randint(0,4)
+#         view = np.loadtxt(self.position_file[rand_int]).transpose().astype(np.float32)
+#         view = torch.from_numpy(view)
+#         if not view.shape[-1] * 400 == mono.shape[-1]:
+#             mono = mono[:,:(mono.shape[-1]//400)*400]
+#             if view.shape[1]*400 > mono.shape[1]:
+#                 m_a = view.shape[1] - mono.shape[-1]//400
+#                 rand_st = random.randint(0,m_a)
+#                 view = view[:,m_a:m_a+(mono.shape[-1]//400)]
+#         self.net.eval()
+#         mono, view = mono.to(self.device), view.to(self.device)
+#         chunk_size = 48000
+#         rec_field = 1000
+#         rec_field -= rec_field % 400
+#         chunks = [
+#             {
+#                 "mono": mono[:, max(0, i-rec_field):i+chunk_size],
+#                 "view": view[:, max(0, i-rec_field)//400:(i+chunk_size)//400]
+#             }
+#             for i in range(0, mono.shape[-1], chunk_size)
+#         ]
+#         for i, chunk in enumerate(chunks):
+#             with torch.no_grad():
+#                 m = chunk["mono"].unsqueeze(0)
+#                 v = chunk["view"].unsqueeze(0)
+#                 binaural = self.net(m, v).squeeze(0)
+#                 if i > 0:
+#                     binaural = binaural[:, -(m.shape[-1]-rec_field):]
+#                 chunk["binaural"] = binaural
+#         binaural = torch.cat([chunk["binaural"] for chunk in chunks], dim=-1)
+#         binaural = torch.clamp(binaural, min=-1, max=1).cpu()
+#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+#         import torchaudio
+#         torchaudio.save(audio_filename, binaural, self.sr)
+#         print(f"Processed Binaural.run, audio_filename: {audio_filename}")
+#         return audio_filename
 
 class TargetSoundDetection:
     def __init__(self, device):
@@ -834,17 +834,17 @@ class ConversationBot:
         # self.t2a = T2A(device="cpu")
         # self.tts = TTS(device="cpu")
         # self.t2s = T2S(device="cpu")
-        self.i2a = I2A(device="cpu")
+        # self.i2a = I2A(device="cpu")
         self.a2t = A2T(device="cpu")
         self.asr = ASR(device="cpu")
         self.SE_SS_SC = Speech_Enh_SS_SC(device="cpu")
         self.SS = Speech_SS(device="cpu")
         self.inpaint = Inpaint(device="cpu")
         self.tts_ood = TTS_OOD(device="cpu")
-        self.geneface = GeneFace(device="cpu")
+        # self.geneface = GeneFace(device="cpu")
         self.detection = SoundDetection(device="cpu")
-        self.binaural = Binaural(device="cpu")
-        self.extraction = SoundExtraction(device="cpu")
+        # self.binaural = Binaural(device="cpu")
+        # self.extraction = SoundExtraction(device="cpu")
         self.TSD = TargetSoundDetection(device="cpu")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
 
@@ -972,28 +972,28 @@ class ConversationBot:
         return gr.Button.update(visible=False)
 
 
-class GeneFace:
-    def __init__(self, device=None):
-        print("Initializing GeneFace model to %s" % device)
-        from audio_to_face.GeneFace_binding import GeneFaceInfer
-        if device is None:
-            device = 'cpu'
-        self.device = device
-        self.geneface_model = GeneFaceInfer(device)
-        print("Loaded GeneFace model")
+# class GeneFace:
+#     def __init__(self, device=None):
+#         print("Initializing GeneFace model to %s" % device)
+#         from audio_to_face.GeneFace_binding import GeneFaceInfer
+#         if device is None:
+#             device = 'cpu'
+#         self.device = device
+#         self.geneface_model = GeneFaceInfer(device)
+#         print("Loaded GeneFace model")
 
-    def inference(self, audio_path):
-        audio_base_name = os.path.basename(audio_path)[:-4]
-        out_video_name = audio_path.replace("audio","video").replace(".wav", ".mp4")
-        inp = {
-            'audio_source_name': audio_path,
-            'out_npy_name': f'geneface/tmp/{audio_base_name}.npy',
-            'cond_name': f'geneface/tmp/{audio_base_name}.npy',
-            'out_video_name': out_video_name,
-            'tmp_imgs_dir': f'video/tmp_imgs',
-        }
-        self.geneface_model.infer_once(inp)
-        return out_video_name
+#     def inference(self, audio_path):
+#         audio_base_name = os.path.basename(audio_path)[:-4]
+#         out_video_name = audio_path.replace("audio","video").replace(".wav", ".mp4")
+#         inp = {
+#             'audio_source_name': audio_path,
+#             'out_npy_name': f'geneface/tmp/{audio_base_name}.npy',
+#             'cond_name': f'geneface/tmp/{audio_base_name}.npy',
+#             'out_video_name': out_video_name,
+#             'tmp_imgs_dir': f'video/tmp_imgs',
+#         }
+#         self.geneface_model.infer_once(inp)
+#         return out_video_name
 
 
 if __name__ == '__main__':
