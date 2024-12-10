@@ -263,28 +263,28 @@ class I2A:
         print(f"Processed I2A.run, image_filename: {image}, audio_filename: {audio_filename}")
         return audio_filename
 
-class TTS:
-    def __init__(self, device=None):
-        from inference.tts.PortaSpeech import TTSInference
-        if device is None:
-            device = 'cpu'
-        print("Initializing PortaSpeech to %s" % device)
-        self.device = device
-        self.exp_name = 'checkpoints/ps_adv_baseline'
-        self.set_model_hparams()
-        self.inferencer = TTSInference(self.hp, device)
+# class TTS:
+#     def __init__(self, device=None):
+#         from inference.tts.PortaSpeech import TTSInference
+#         if device is None:
+#             device = 'cpu'
+#         print("Initializing PortaSpeech to %s" % device)
+#         self.device = device
+#         self.exp_name = 'checkpoints/ps_adv_baseline'
+#         self.set_model_hparams()
+#         self.inferencer = TTSInference(self.hp, device)
 
-    def set_model_hparams(self):
-        set_hparams(exp_name=self.exp_name, print_hparams=False)
-        self.hp = hp
+#     def set_model_hparams(self):
+#         set_hparams(exp_name=self.exp_name, print_hparams=False)
+#         self.hp = hp
 
-    def inference(self, text):
-        self.set_model_hparams()
-        inp = {"text": text}
-        out = self.inferencer.infer_once(inp)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        soundfile.write(audio_filename, out, samplerate=22050)
-        return audio_filename
+#     def inference(self, text):
+#         self.set_model_hparams()
+#         inp = {"text": text}
+#         out = self.inferencer.infer_once(inp)
+#         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+#         soundfile.write(audio_filename, out, samplerate=22050)
+#         return audio_filename
 
 class T2S:
     def __init__(self, device=None):
@@ -832,7 +832,7 @@ class ConversationBot:
         self.t2i = T2I(device="cpu")
         self.i2t = ImageCaptioning(device="cpu")
         # self.t2a = T2A(device="cpu")
-        self.tts = TTS(device="cpu")
+        # self.tts = TTS(device="cpu")
         self.t2s = T2S(device="cpu")
         self.i2a = I2A(device="cpu")
         self.a2t = A2T(device="cpu")
